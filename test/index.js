@@ -72,7 +72,7 @@ describe('Bananas', () => {
                             expect(err).to.not.exist();
                             done();
                         });
-                    }, 110);
+                    }, 200);
                 });
             });
         });
