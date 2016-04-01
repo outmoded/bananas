@@ -48,11 +48,11 @@ describe('Bananas', () => {
                 }
             });
 
-            const updates = [];
+            let updates = [];
             const orig = Wreck.post;
             Wreck.post = function (uri, options, ignore) {
 
-                updates.push({ uri, options });
+                updates = updates.concat(options.payload.split('\n'));
             };
 
             server.start((err) => {
@@ -63,8 +63,7 @@ describe('Bananas', () => {
 
                     setTimeout(() => {
 
-                        const messages = updates[0].options.payload.split('\n');
-                        expect(messages.length).to.equal(3);
+                        expect(updates.length).to.equal(3);
                         Wreck.post = orig;
 
                         server.stop((err) => {
@@ -101,11 +100,11 @@ describe('Bananas', () => {
                 }
             });
 
-            const updates = [];
+            let updates = [];
             const orig = Wreck.post;
             Wreck.post = function (uri, options, ignore) {
 
-                updates.push({ uri, options });
+                updates = updates.concat(options.payload.split('\n'));
             };
 
             server.start((err) => {
@@ -124,7 +123,7 @@ describe('Bananas', () => {
                             expect(err).to.not.exist();
                             done();
                         });
-                    }, 110);
+                    }, 200);
                 });
             });
         });
