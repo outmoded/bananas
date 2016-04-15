@@ -34,6 +34,14 @@ describe('Bananas', () => {
             intervalMsec: 50
         };
 
+        let updates = [];
+        const orig = Wreck.post;
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
         server.register({ register: Bananas, options: settings }, (err) => {
 
             expect(err).to.not.exist();
@@ -48,13 +56,6 @@ describe('Bananas', () => {
                 }
             });
 
-            let updates = [];
-            const orig = Wreck.post;
-            Wreck.post = function (uri, options, ignore) {
-
-                updates = updates.concat(options.payload.split('\n'));
-            };
-
             server.start((err) => {
 
                 expect(err).to.not.exist();
@@ -63,7 +64,7 @@ describe('Bananas', () => {
 
                     setTimeout(() => {
 
-                        expect(updates.length).to.equal(3);
+                        expect(updates.length).to.equal(4);
                         Wreck.post = orig;
 
                         server.stop((err) => {
@@ -87,6 +88,14 @@ describe('Bananas', () => {
             intervalMsec: 50
         };
 
+        let updates = [];
+        const orig = Wreck.post;
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
         server.register({ register: Bananas, options: settings }, (err) => {
 
             expect(err).to.not.exist();
@@ -100,13 +109,6 @@ describe('Bananas', () => {
                 }
             });
 
-            let updates = [];
-            const orig = Wreck.post;
-            Wreck.post = function (uri, options, ignore) {
-
-                updates = updates.concat(options.payload.split('\n'));
-            };
-
             server.start((err) => {
 
                 expect(err).to.not.exist();
@@ -115,7 +117,7 @@ describe('Bananas', () => {
 
                     setTimeout(() => {
 
-                        expect(updates.length).to.equal(1);
+                        expect(updates.length).to.equal(2);
                         Wreck.post = orig;
 
                         server.stop((err) => {
