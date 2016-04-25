@@ -130,4 +130,57 @@ describe('Bananas', () => {
             });
         });
     });
+
+    it('logs valid event on late connection', { parallel: false }, (done) => {
+
+        const server = new Hapi.Server({ debug: false });
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            root: true
+        };
+
+        let updates = [];
+        const orig = Wreck.post;
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
+        server.register({ register: Bananas, options: settings }, (err) => {
+
+            expect(err).to.not.exist();
+
+            server.connection();
+            server.route({
+                path: '/',
+                method: 'GET',
+                handler: function (request, reply) {
+
+                    return reply('hello');
+                }
+            });
+
+            server.start((err) => {
+
+                expect(err).to.not.exist();
+
+                server.inject('/', (res) => {
+
+                    setTimeout(() => {
+
+                        expect(updates.length).to.equal(2);
+                        Wreck.post = orig;
+
+                        server.stop((err) => {
+
+                            expect(err).to.not.exist();
+                            done();
+                        });
+                    }, 200);
+                });
+            });
+        });
+    });
 });
