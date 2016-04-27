@@ -183,4 +183,70 @@ describe('Bananas', () => {
             });
         });
     });
+
+    it('logs valid event', { parallel: false }, (done) => {
+
+        const server = new Hapi.Server({ debug: false });
+        server.connection();
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            exclude: ['/b']
+        };
+
+        let updates = [];
+        const orig = Wreck.post;
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
+        server.register({ register: Bananas, options: settings }, (err) => {
+
+            expect(err).to.not.exist();
+
+            server.route({
+                path: '/a',
+                method: 'GET',
+                handler: function (request, reply) {
+
+                    return reply('hello');
+                }
+            });
+
+            server.route({
+                path: '/b',
+                method: 'GET',
+                handler: function (request, reply) {
+
+                    return reply('hello');
+                }
+            });
+
+            server.start((err) => {
+
+                expect(err).to.not.exist();
+
+                server.inject('/a', (res1) => {
+
+                    server.inject('/b', (res2) => {
+
+                        setTimeout(() => {
+
+                            expect(updates.length).to.equal(2);
+                            Wreck.post = orig;
+
+                            server.stop((err) => {
+
+                                expect(err).to.not.exist();
+                                done();
+                            });
+                        }, 200);
+                    });
+                });
+            });
+        });
+    });
 });
