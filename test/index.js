@@ -249,4 +249,41 @@ describe('Bananas', () => {
             });
         });
     });
+
+    it('logs uncaughtException event', { parallel: false }, (done) => {
+
+        const server = new Hapi.Server({ debug: false });
+        server.connection();
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            uncaughtException: true
+        };
+
+        let updates = [];
+        const orig = Wreck.post;
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
+        const exit = process.exit;
+        process.exit = (code) => {
+
+            process.exit = exit;
+            Wreck.post = orig;
+
+            expect(updates.length).to.equal(2);
+            expect(code).to.equal(1);
+            done();
+        };
+
+        server.register({ register: Bananas, options: settings }, (err) => {
+
+            expect(err).to.not.exist();
+            process.emit('uncaughtException', new Error('boom'));
+        });
+    });
 });
