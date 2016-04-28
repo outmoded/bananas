@@ -1,7 +1,7 @@
 {
   "name": "bananas",
   "description": "Minimal Loggly hapi plugin",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "author": "Eran Hammer <eran@hammer.io> (http://hueniverse.com)",
   "repository": "git://github.com/hueniverse/bananas",
   "main": "lib/index.js",
