@@ -250,6 +250,67 @@ describe('Bananas', () => {
         });
     });
 
+    it('filter routes with flag', { parallel: false }, (done) => {
+
+        const server = new Hapi.Server({ debug: false });
+        server.connection();
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            exclude: ['/b']
+        };
+
+        let updates = [];
+        const orig = Wreck.post;
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
+        server.register({ register: Bananas, options: settings }, (err) => {
+
+            expect(err).to.not.exist();
+
+            server.route({
+                path: '/a',
+                method: 'GET',
+                handler: function (request, reply) {
+
+                    return reply('hello');
+                },
+                config: {
+                    plugins: {
+                        bananas: {
+                            exclude: true
+                        }
+                    }
+                }
+            });
+
+            server.start((err) => {
+
+                expect(err).to.not.exist();
+
+                server.inject('/a', (res1) => {
+
+                    setTimeout(() => {
+
+                        expect(updates.length).to.equal(1);
+                        Wreck.post = orig;
+
+                        server.stop((err) => {
+
+                            expect(err).to.not.exist();
+                            done();
+                        });
+                    }, 200);
+                });
+            });
+        });
+    });
+
     it('logs uncaughtException event', { parallel: false }, (done) => {
 
         const server = new Hapi.Server({ debug: false });
