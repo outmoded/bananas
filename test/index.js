@@ -2,6 +2,7 @@
 
 // Load modules
 
+const Os = require('os');
 const Bananas = require('../');
 const Code = require('code');
 const Hapi = require('hapi');
@@ -24,7 +25,7 @@ const expect = Code.expect;
 
 describe('Bananas', () => {
 
-    it('logs error event', { parallel: false }, (done) => {
+    it('logs error events', { parallel: false }, (done) => {
 
         const server = new Hapi.Server({ debug: false });
         server.connection();
@@ -62,11 +63,76 @@ describe('Bananas', () => {
 
                 server.inject('/', (res) => {
 
+                    const error = new Error('oops');
+                    error.data = 42;
+                    server.log(['some', 'tags'], error);
+
                     setTimeout(() => {
 
-                        expect(updates.length).to.equal(4);
-                        Wreck.post = orig;
+                        updates = updates.map(JSON.parse);
+                        expect(updates).to.deep.equal([
+                            {
+                                event: 'server',
+                                timestamp: updates[0].timestamp,
+                                host: Os.hostname(),
+                                tags: ['bananas', 'initialized']
+                            },
+                            {
+                                event: 'server',
+                                timestamp: updates[1].timestamp,
+                                host: Os.hostname(),
+                                tags: ['server event']
+                            },
+                            {
+                                event: 'error',
+                                timestamp: updates[2].timestamp,
+                                host: Os.hostname(),
+                                path: '/',
+                                query: {},
+                                method: 'get',
+                                request: {
+                                    id: updates[2].request.id,
+                                    received: updates[2].request.received,
+                                    elapsed: updates[2].request.elapsed
+                                },
+                                error: {
+                                    message: 'Uncaught error: boom',
+                                    stack: updates[2].error.stack
+                                }
+                            },
+                            {
+                                event: 'response',
+                                timestamp: updates[3].timestamp,
+                                host: Os.hostname(),
+                                path: '/',
+                                query: {},
+                                method: 'get',
+                                request: {
+                                    id: updates[3].request.id,
+                                    received: updates[3].request.received,
+                                    elapsed: updates[3].request.elapsed
+                                },
+                                code: 500,
+                                error: {
+                                    statusCode: 500,
+                                    error: 'Internal Server Error',
+                                    message: 'An internal server error occurred'
+                                }
+                            },
+                            {
+                                event: 'server',
+                                timestamp: updates[4].timestamp,
+                                host: Os.hostname(),
+                                tags: ['some', 'tags'],
+                                data: {
+                                    message: 'oops',
+                                    stack: updates[4].data.stack,
+                                    data: 42
+                                }
+                            }
+                        ]);
 
+                        Wreck.post = orig;
                         server.stop((err) => {
 
                             expect(err).to.not.exist();
@@ -345,6 +411,118 @@ describe('Bananas', () => {
 
             expect(err).to.not.exist();
             process.emit('uncaughtException', new Error('boom'));
+        });
+    });
+
+    it('logs signal (SIGTERM)', { parallel: false }, (done) => {
+
+        const server = new Hapi.Server({ debug: false });
+        server.connection();
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            signals: true
+        };
+
+        let updates = [];
+        const orig = Wreck.post;
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
+        const exit = process.exit;
+        process.exit = (code) => {
+
+            process.exit = exit;
+            Wreck.post = orig;
+
+            updates = updates.map(JSON.parse);
+            expect(updates).to.deep.equal([
+                {
+                    event: 'server',
+                    timestamp: updates[0].timestamp,
+                    host: Os.hostname(),
+                    tags: ['bananas', 'initialized']
+                },
+                {
+                    event: 'server',
+                    timestamp: updates[1].timestamp,
+                    host: Os.hostname(),
+                    tags: ['bananas', 'signal', 'SIGTERM']
+                },
+                {
+                    event: 'server',
+                    timestamp: updates[2].timestamp,
+                    host: Os.hostname(),
+                    tags: ['bananas', 'stopped']
+                }
+            ]);
+            done();
+        };
+
+        server.register({ register: Bananas, options: settings }, (err) => {
+
+            expect(err).to.not.exist();
+            process.emit('SIGTERM');
+        });
+    });
+
+    it('logs signal (SIGINT)', { parallel: false }, (done) => {
+
+        const server = new Hapi.Server({ debug: false });
+        server.connection();
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            signals: true
+        };
+
+        let updates = [];
+        const orig = Wreck.post;
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
+        const exit = process.exit;
+        process.exit = (code) => {
+
+            process.exit = exit;
+            Wreck.post = orig;
+
+            updates = updates.map(JSON.parse);
+            expect(updates).to.deep.equal([
+                {
+                    event: 'server',
+                    timestamp: updates[0].timestamp,
+                    host: Os.hostname(),
+                    tags: ['bananas', 'initialized']
+                },
+                {
+                    event: 'server',
+                    timestamp: updates[1].timestamp,
+                    host: Os.hostname(),
+                    tags: ['bananas', 'signal', 'SIGINT']
+                },
+                {
+                    event: 'server',
+                    timestamp: updates[2].timestamp,
+                    host: Os.hostname(),
+                    tags: ['bananas', 'stopped']
+                }
+            ]);
+            done();
+        };
+
+        server.register({ register: Bananas, options: settings }, (err) => {
+
+            expect(err).to.not.exist();
+            process.emit('SIGINT');
         });
     });
 });
