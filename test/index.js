@@ -75,7 +75,8 @@ describe('Bananas', () => {
                                 event: 'server',
                                 timestamp: updates[0].timestamp,
                                 host: Os.hostname(),
-                                tags: ['bananas', 'initialized']
+                                tags: ['bananas', 'initialized'],
+                                env: JSON.parse(JSON.stringify(process.env))
                             },
                             {
                                 event: 'server',
@@ -445,7 +446,8 @@ describe('Bananas', () => {
                     event: 'server',
                     timestamp: updates[0].timestamp,
                     host: Os.hostname(),
-                    tags: ['bananas', 'initialized']
+                    tags: ['bananas', 'initialized'],
+                    env: JSON.parse(JSON.stringify(process.env))
                 },
                 {
                     event: 'server',
@@ -501,7 +503,8 @@ describe('Bananas', () => {
                     event: 'server',
                     timestamp: updates[0].timestamp,
                     host: Os.hostname(),
-                    tags: ['bananas', 'initialized']
+                    tags: ['bananas', 'initialized'],
+                    env: JSON.parse(JSON.stringify(process.env))
                 },
                 {
                     event: 'server',
