@@ -70,7 +70,7 @@ describe('Bananas', () => {
                     setTimeout(() => {
 
                         updates = updates.map(JSON.parse);
-                        expect(updates).to.deep.equal([
+                        expect(updates).to.equal([
                             {
                                 event: 'server',
                                 timestamp: updates[0].timestamp,
@@ -441,7 +441,7 @@ describe('Bananas', () => {
             Wreck.post = orig;
 
             updates = updates.map(JSON.parse);
-            expect(updates).to.deep.equal([
+            expect(updates).to.equal([
                 {
                     event: 'server',
                     timestamp: updates[0].timestamp,
@@ -498,7 +498,7 @@ describe('Bananas', () => {
             Wreck.post = orig;
 
             updates = updates.map(JSON.parse);
-            expect(updates).to.deep.equal([
+            expect(updates).to.equal([
                 {
                     event: 'server',
                     timestamp: updates[0].timestamp,
