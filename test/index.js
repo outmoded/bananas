@@ -32,7 +32,8 @@ describe('Bananas', () => {
 
         const settings = {
             token: 'abcdefg',
-            intervalMsec: 50
+            intervalMsec: 50,
+            tags: ['test']
         };
 
         let updates = [];
@@ -75,19 +76,20 @@ describe('Bananas', () => {
                                 event: 'server',
                                 timestamp: updates[0].timestamp,
                                 host: Os.hostname(),
-                                tags: ['bananas', 'initialized'],
+                                tags: ['test', 'bananas', 'initialized'],
                                 env: JSON.parse(JSON.stringify(process.env))
                             },
                             {
                                 event: 'server',
                                 timestamp: updates[1].timestamp,
                                 host: Os.hostname(),
-                                tags: ['server event']
+                                tags: ['test', 'server event']
                             },
                             {
                                 event: 'error',
                                 timestamp: updates[2].timestamp,
                                 host: Os.hostname(),
+                                tags: ['test'],
                                 path: '/',
                                 query: {},
                                 method: 'get',
@@ -105,6 +107,7 @@ describe('Bananas', () => {
                                 event: 'response',
                                 timestamp: updates[3].timestamp,
                                 host: Os.hostname(),
+                                tags: ['test'],
                                 path: '/',
                                 query: {},
                                 method: 'get',
@@ -124,7 +127,7 @@ describe('Bananas', () => {
                                 event: 'server',
                                 timestamp: updates[4].timestamp,
                                 host: Os.hostname(),
-                                tags: ['some', 'tags'],
+                                tags: ['test', 'some', 'tags'],
                                 data: {
                                     message: 'oops',
                                     stack: updates[4].data.stack,
@@ -422,8 +425,8 @@ describe('Bananas', () => {
 
         const settings = {
             token: 'abcdefg',
-            intervalMsec: 50,
-            signals: true
+            signals: true,
+            tags: ['test']
         };
 
         let updates = [];
@@ -446,20 +449,20 @@ describe('Bananas', () => {
                     event: 'server',
                     timestamp: updates[0].timestamp,
                     host: Os.hostname(),
-                    tags: ['bananas', 'initialized'],
+                    tags: ['test', 'bananas', 'initialized'],
                     env: JSON.parse(JSON.stringify(process.env))
                 },
                 {
                     event: 'server',
                     timestamp: updates[1].timestamp,
                     host: Os.hostname(),
-                    tags: ['bananas', 'signal', 'SIGTERM']
+                    tags: ['test', 'bananas', 'signal', 'SIGTERM']
                 },
                 {
                     event: 'server',
                     timestamp: updates[2].timestamp,
                     host: Os.hostname(),
-                    tags: ['bananas', 'stopped']
+                    tags: ['test', 'bananas', 'stopped']
                 }
             ]);
             done();
@@ -479,7 +482,6 @@ describe('Bananas', () => {
 
         const settings = {
             token: 'abcdefg',
-            intervalMsec: 50,
             signals: true
         };
 
