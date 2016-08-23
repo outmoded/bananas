@@ -500,6 +500,8 @@ describe('Bananas', () => {
                     tags: ['test', 'bananas', 'stopped']
                 }
             ]);
+            expect(process.listenerCount('SIGTERM')).to.equal(0);
+            expect(process.listenerCount('SIGINT')).to.equal(0);
             done();
         };
 
@@ -557,6 +559,8 @@ describe('Bananas', () => {
                     tags: ['bananas', 'stopped']
                 }
             ]);
+            expect(process.listenerCount('SIGTERM')).to.equal(0);
+            expect(process.listenerCount('SIGINT')).to.equal(0);
             done();
         };
 
