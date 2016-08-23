@@ -53,6 +53,7 @@ describe('Bananas', () => {
             return next();
         };
 
+        const timeBeforeBananasRegister = new Date();
         server.register({ register: Bananas, options: settings }, (err) => {
 
             expect(err).to.not.exist();
@@ -67,9 +68,11 @@ describe('Bananas', () => {
                 }
             });
 
+            const timeBeforeServerStart = new Date();
             server.start((err) => {
 
                 expect(err).to.not.exist();
+                const timeBeforeInject = new Date();
 
                 server.inject('/', (res) => {
 
@@ -145,6 +148,15 @@ describe('Bananas', () => {
                             }
                         ]);
 
+                        expect(new Date(updates[0].timestamp)).to.be.between(timeBeforeBananasRegister, new Date());
+                        expect(new Date(updates[1].timestamp)).to.be.between(timeBeforeServerStart, new Date());
+
+                        updates.slice(2).forEach((update) => {
+
+                            expect(new Date(update.timestamp)).to.be.between(timeBeforeInject, new Date());
+                        });
+
+                        const timeBeforeStop = new Date();
                         server.stop((err) => {
 
                             expect(err).to.not.exist();
@@ -156,6 +168,7 @@ describe('Bananas', () => {
                                 host: Os.hostname(),
                                 tags: ['test', 'bananas', 'stopped']
                             });
+                            expect(new Date(lastUpdate.timestamp)).to.be.between(timeBeforeStop, new Date());
                             done();
                         });
                     }, 200);
