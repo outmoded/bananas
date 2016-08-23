@@ -25,6 +25,13 @@ const expect = Code.expect;
 
 describe('Bananas', () => {
 
+    const originalPost = Wreck.post;
+    lab.afterEach((done) => {
+
+        Wreck.post = originalPost;
+        done();
+    });
+
     it('logs error events', { parallel: false }, (done) => {
 
         const server = new Hapi.Server({ debug: false });
@@ -37,9 +44,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -136,7 +145,6 @@ describe('Bananas', () => {
                             }
                         ]);
 
-                        Wreck.post = orig;
                         server.stop((err) => {
 
                             expect(err).to.not.exist();
@@ -154,14 +162,16 @@ describe('Bananas', () => {
         server.connection();
 
         const settings = {
-            token: 'abcdefg',
+            token: 'gfedcba',
             intervalMsec: 50
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/gfedcba');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -188,7 +198,6 @@ describe('Bananas', () => {
                     setTimeout(() => {
 
                         expect(updates.length).to.equal(2);
-                        Wreck.post = orig;
 
                         server.stop((err) => {
 
@@ -211,9 +220,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -241,7 +252,6 @@ describe('Bananas', () => {
                     setTimeout(() => {
 
                         expect(updates.length).to.equal(2);
-                        Wreck.post = orig;
 
                         server.stop((err) => {
 
@@ -266,9 +276,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -306,7 +318,6 @@ describe('Bananas', () => {
                         setTimeout(() => {
 
                             expect(updates.length).to.equal(2);
-                            Wreck.post = orig;
 
                             server.stop((err) => {
 
@@ -332,9 +343,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -368,7 +381,6 @@ describe('Bananas', () => {
                     setTimeout(() => {
 
                         expect(updates.length).to.equal(1);
-                        Wreck.post = orig;
 
                         server.stop((err) => {
 
@@ -393,9 +405,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -404,7 +418,6 @@ describe('Bananas', () => {
         process.exit = (code) => {
 
             process.exit = exit;
-            Wreck.post = orig;
 
             expect(updates.length).to.equal(2);
             expect(code).to.equal(1);
@@ -430,9 +443,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -441,7 +456,6 @@ describe('Bananas', () => {
         process.exit = (code) => {
 
             process.exit = exit;
-            Wreck.post = orig;
 
             updates = updates.map(JSON.parse);
             expect(updates).to.equal([
@@ -486,9 +500,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -497,7 +513,6 @@ describe('Bananas', () => {
         process.exit = (code) => {
 
             process.exit = exit;
-            Wreck.post = orig;
 
             updates = updates.map(JSON.parse);
             expect(updates).to.equal([
