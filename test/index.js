@@ -148,6 +148,14 @@ describe('Bananas', () => {
                         server.stop((err) => {
 
                             expect(err).to.not.exist();
+                            expect(updates.length).to.equal(6);
+                            const lastUpdate = JSON.parse(updates[5]);
+                            expect(lastUpdate).to.equal({
+                                event: 'server',
+                                timestamp: lastUpdate.timestamp,
+                                host: Os.hostname(),
+                                tags: ['test', 'bananas', 'stopped']
+                            });
                             done();
                         });
                     }, 200);
