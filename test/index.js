@@ -40,7 +40,7 @@ describe('Bananas', () => {
         const settings = {
             token: 'abcdefg',
             intervalMsec: 50,
-            tags: ['test']
+            tags: ['test', 'test2']
         };
 
         let updates = [];
@@ -48,7 +48,10 @@ describe('Bananas', () => {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
             expect(options.json).to.be.true();
-            expect(options.headers).to.equal({ 'content-type': 'application/json' });
+            expect(options.headers).to.equal({
+                'content-type': 'application/json',
+                'x-loggly-tag': 'test,test2'
+            });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -88,20 +91,20 @@ describe('Bananas', () => {
                                 event: 'server',
                                 timestamp: updates[0].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test', 'bananas', 'initialized'],
+                                tags: ['test', 'test2', 'bananas', 'initialized'],
                                 env: JSON.parse(JSON.stringify(process.env))
                             },
                             {
                                 event: 'server',
                                 timestamp: updates[1].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test', 'server event']
+                                tags: ['test', 'test2', 'server event']
                             },
                             {
                                 event: 'error',
                                 timestamp: updates[2].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test'],
+                                tags: ['test', 'test2'],
                                 path: '/',
                                 query: {},
                                 method: 'get',
@@ -119,7 +122,7 @@ describe('Bananas', () => {
                                 event: 'response',
                                 timestamp: updates[3].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test'],
+                                tags: ['test', 'test2'],
                                 path: '/',
                                 query: {},
                                 method: 'get',
@@ -139,7 +142,7 @@ describe('Bananas', () => {
                                 event: 'server',
                                 timestamp: updates[4].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test', 'some', 'tags'],
+                                tags: ['test', 'test2', 'some', 'tags'],
                                 data: {
                                     message: 'oops',
                                     stack: updates[4].data.stack,
@@ -166,7 +169,7 @@ describe('Bananas', () => {
                                 event: 'server',
                                 timestamp: lastUpdate.timestamp,
                                 host: Os.hostname(),
-                                tags: ['test', 'bananas', 'stopped']
+                                tags: ['test', 'test2', 'bananas', 'stopped']
                             });
                             expect(new Date(lastUpdate.timestamp)).to.be.between(timeBeforeStop, new Date());
                             done();
@@ -468,7 +471,10 @@ describe('Bananas', () => {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
             expect(options.json).to.be.true();
-            expect(options.headers).to.equal({ 'content-type': 'application/json' });
+            expect(options.headers).to.equal({
+                'content-type': 'application/json',
+                'x-loggly-tag': 'test'
+            });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
