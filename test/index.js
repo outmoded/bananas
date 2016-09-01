@@ -86,25 +86,18 @@ describe('Bananas', () => {
                                 tags: ['test', 'server event']
                             },
                             {
-                                event: 'error',
+                                event: 'server',
                                 timestamp: updates[2].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test'],
-                                path: '/',
-                                query: {},
-                                method: 'get',
-                                request: {
-                                    id: updates[2].request.id,
-                                    received: updates[2].request.received,
-                                    elapsed: updates[2].request.elapsed
-                                },
-                                error: {
-                                    message: 'Uncaught error: boom',
-                                    stack: updates[2].error.stack
+                                tags: ['test', 'some', 'tags'],
+                                data: {
+                                    message: 'oops',
+                                    stack: updates[2].data.stack,
+                                    data: 42
                                 }
                             },
                             {
-                                event: 'response',
+                                event: 'error',
                                 timestamp: updates[3].timestamp,
                                 host: Os.hostname(),
                                 tags: ['test'],
@@ -116,22 +109,29 @@ describe('Bananas', () => {
                                     received: updates[3].request.received,
                                     elapsed: updates[3].request.elapsed
                                 },
+                                error: {
+                                    message: 'Uncaught error: boom',
+                                    stack: updates[3].error.stack
+                                }
+                            },
+                            {
+                                event: 'response',
+                                timestamp: updates[4].timestamp,
+                                host: Os.hostname(),
+                                tags: ['test'],
+                                path: '/',
+                                query: {},
+                                method: 'get',
+                                request: {
+                                    id: updates[4].request.id,
+                                    received: updates[4].request.received,
+                                    elapsed: updates[4].request.elapsed
+                                },
                                 code: 500,
                                 error: {
                                     statusCode: 500,
                                     error: 'Internal Server Error',
                                     message: 'An internal server error occurred'
-                                }
-                            },
-                            {
-                                event: 'server',
-                                timestamp: updates[4].timestamp,
-                                host: Os.hostname(),
-                                tags: ['test', 'some', 'tags'],
-                                data: {
-                                    message: 'oops',
-                                    stack: updates[4].data.stack,
-                                    data: 42
                                 }
                             }
                         ]);
