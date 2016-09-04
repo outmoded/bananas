@@ -62,7 +62,7 @@ describe('Bananas', () => {
             expect(err).to.not.exist();
 
             server.route({
-                path: '/',
+                path: '/{param1}/b/{param2}',
                 method: 'GET',
                 handler: function (request, reply) {
 
@@ -77,7 +77,7 @@ describe('Bananas', () => {
                 expect(err).to.not.exist();
                 const timeBeforeInject = new Date();
 
-                server.inject('/', (res) => {
+                server.inject('/123/b/456', (res) => {
 
                     const error = new Error('oops');
                     error.data = 42;
@@ -116,7 +116,12 @@ describe('Bananas', () => {
                                 timestamp: updates[3].timestamp,
                                 host: Os.hostname(),
                                 tags: ['test', 'test2'],
-                                path: '/',
+                                path: '/123/b/456',
+                                routePath: '/{param1}/b/{param2}',
+                                params: {
+                                    param1: '123',
+                                    param2: '456'
+                                },
                                 query: {},
                                 method: 'get',
                                 request: {
@@ -134,7 +139,12 @@ describe('Bananas', () => {
                                 timestamp: updates[4].timestamp,
                                 host: Os.hostname(),
                                 tags: ['test', 'test2'],
-                                path: '/',
+                                path: '/123/b/456',
+                                routePath: '/{param1}/b/{param2}',
+                                params: {
+                                    param1: '123',
+                                    param2: '456'
+                                },
                                 query: {},
                                 method: 'get',
                                 request: {
