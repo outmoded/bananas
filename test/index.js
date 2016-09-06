@@ -26,13 +26,15 @@ const expect = Code.expect;
 describe('Bananas', () => {
 
     const originalPost = Wreck.post;
-    lab.afterEach((done) => {
+    const restorePost = (done) => {
 
         Wreck.post = originalPost;
         done();
-    });
+    };
 
-    it('logs error events', { parallel: false }, (done) => {
+    it('logs error events', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
 
         const server = new Hapi.Server({ debug: false });
         server.connection();
@@ -180,7 +182,9 @@ describe('Bananas', () => {
         });
     });
 
-    it('logs valid event', { parallel: false }, (done) => {
+    it('logs valid event', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
 
         const server = new Hapi.Server({ debug: false });
         server.connection();
@@ -234,7 +238,9 @@ describe('Bananas', () => {
         });
     });
 
-    it('logs valid event on late connection', { parallel: false }, (done) => {
+    it('logs valid event on late connection', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
 
         const server = new Hapi.Server({ debug: false });
         const settings = {
@@ -288,7 +294,9 @@ describe('Bananas', () => {
         });
     });
 
-    it('logs valid event', { parallel: false }, (done) => {
+    it('logs valid event', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
 
         const server = new Hapi.Server({ debug: false });
         server.connection();
@@ -355,7 +363,9 @@ describe('Bananas', () => {
         });
     });
 
-    it('filter routes with flag', { parallel: false }, (done) => {
+    it('filter routes with flag', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
 
         const server = new Hapi.Server({ debug: false });
         server.connection();
@@ -417,7 +427,9 @@ describe('Bananas', () => {
         });
     });
 
-    it('logs uncaughtException event', { parallel: false }, (done) => {
+    it('logs uncaughtException event', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
 
         const server = new Hapi.Server({ debug: false });
         server.connection();
@@ -455,7 +467,9 @@ describe('Bananas', () => {
         });
     });
 
-    it('logs signal (SIGTERM)', { parallel: false }, (done) => {
+    it('logs signal (SIGTERM)', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
 
         const server = new Hapi.Server({ debug: false });
         server.connection();
@@ -518,7 +532,9 @@ describe('Bananas', () => {
         });
     });
 
-    it('logs signal (SIGINT)', { parallel: false }, (done) => {
+    it('logs signal (SIGINT)', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
 
         const server = new Hapi.Server({ debug: false });
         server.connection();
