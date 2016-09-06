@@ -467,6 +467,42 @@ describe('Bananas', () => {
         });
     });
 
+    it('logs unhandledRejection event', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
+
+        const server = new Hapi.Server({ debug: false });
+        server.connection();
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            uncaughtException: true
+        };
+
+        let updates = [];
+        Wreck.post = function (uri, options, next) {
+
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
+        server.register({ register: Bananas, options: settings }, (err) => {
+
+            expect(err).to.not.exist();
+            Promise.reject(new Error('Boom'));
+
+            setTimeout(() => {
+
+                expect(updates[1]).to.contain('"tags":["bananas","uncaught","promise","error"]');
+                done();
+            }, 100);
+        });
+    });
+
     it('logs signal (SIGTERM)', { parallel: false }, (done, onCleanup) => {
 
         onCleanup(restorePost);
