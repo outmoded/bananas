@@ -25,6 +25,13 @@ const expect = Code.expect;
 
 describe('Bananas', () => {
 
+    const originalPost = Wreck.post;
+    lab.afterEach((done) => {
+
+        Wreck.post = originalPost;
+        done();
+    });
+
     it('logs error events', { parallel: false }, (done) => {
 
         const server = new Hapi.Server({ debug: false });
@@ -33,17 +40,23 @@ describe('Bananas', () => {
         const settings = {
             token: 'abcdefg',
             intervalMsec: 50,
-            tags: ['test']
+            tags: ['test', 'test2']
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({
+                'content-type': 'application/json',
+                'x-loggly-tag': 'test,test2'
+            });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
 
+        const timeBeforeBananasRegister = new Date();
         server.register({ register: Bananas, options: settings }, (err) => {
 
             expect(err).to.not.exist();
@@ -58,9 +71,11 @@ describe('Bananas', () => {
                 }
             });
 
+            const timeBeforeServerStart = new Date();
             server.start((err) => {
 
                 expect(err).to.not.exist();
+                const timeBeforeInject = new Date();
 
                 server.inject('/', (res) => {
 
@@ -76,20 +91,20 @@ describe('Bananas', () => {
                                 event: 'server',
                                 timestamp: updates[0].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test', 'bananas', 'initialized'],
+                                tags: ['test', 'test2', 'bananas', 'initialized'],
                                 env: JSON.parse(JSON.stringify(process.env))
                             },
                             {
                                 event: 'server',
                                 timestamp: updates[1].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test', 'server event']
+                                tags: ['test', 'test2', 'server event']
                             },
                             {
                                 event: 'server',
                                 timestamp: updates[2].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test', 'some', 'tags'],
+                                tags: ['test', 'test2', 'some', 'tags'],
                                 data: {
                                     message: 'oops',
                                     stack: updates[2].data.stack,
@@ -100,7 +115,7 @@ describe('Bananas', () => {
                                 event: 'error',
                                 timestamp: updates[3].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test'],
+                                tags: ['test', 'test2'],
                                 path: '/',
                                 query: {},
                                 method: 'get',
@@ -118,7 +133,7 @@ describe('Bananas', () => {
                                 event: 'response',
                                 timestamp: updates[4].timestamp,
                                 host: Os.hostname(),
-                                tags: ['test'],
+                                tags: ['test', 'test2'],
                                 path: '/',
                                 query: {},
                                 method: 'get',
@@ -136,10 +151,27 @@ describe('Bananas', () => {
                             }
                         ]);
 
-                        Wreck.post = orig;
+                        expect(new Date(updates[0].timestamp)).to.be.between(timeBeforeBananasRegister, new Date());
+                        expect(new Date(updates[1].timestamp)).to.be.between(timeBeforeServerStart, new Date());
+
+                        updates.slice(2).forEach((update) => {
+
+                            expect(new Date(update.timestamp)).to.be.between(timeBeforeInject, new Date());
+                        });
+
+                        const timeBeforeStop = new Date();
                         server.stop((err) => {
 
                             expect(err).to.not.exist();
+                            expect(updates.length).to.equal(6);
+                            const lastUpdate = JSON.parse(updates[5]);
+                            expect(lastUpdate).to.equal({
+                                event: 'server',
+                                timestamp: lastUpdate.timestamp,
+                                host: Os.hostname(),
+                                tags: ['test', 'test2', 'bananas', 'stopped']
+                            });
+                            expect(new Date(lastUpdate.timestamp)).to.be.between(timeBeforeStop, new Date());
                             done();
                         });
                     }, 200);
@@ -154,14 +186,16 @@ describe('Bananas', () => {
         server.connection();
 
         const settings = {
-            token: 'abcdefg',
+            token: 'gfedcba',
             intervalMsec: 50
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/gfedcba');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -188,7 +222,6 @@ describe('Bananas', () => {
                     setTimeout(() => {
 
                         expect(updates.length).to.equal(2);
-                        Wreck.post = orig;
 
                         server.stop((err) => {
 
@@ -211,9 +244,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -241,7 +276,6 @@ describe('Bananas', () => {
                     setTimeout(() => {
 
                         expect(updates.length).to.equal(2);
-                        Wreck.post = orig;
 
                         server.stop((err) => {
 
@@ -266,9 +300,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -306,7 +342,6 @@ describe('Bananas', () => {
                         setTimeout(() => {
 
                             expect(updates.length).to.equal(2);
-                            Wreck.post = orig;
 
                             server.stop((err) => {
 
@@ -332,9 +367,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -368,7 +405,6 @@ describe('Bananas', () => {
                     setTimeout(() => {
 
                         expect(updates.length).to.equal(1);
-                        Wreck.post = orig;
 
                         server.stop((err) => {
 
@@ -393,9 +429,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -404,7 +442,6 @@ describe('Bananas', () => {
         process.exit = (code) => {
 
             process.exit = exit;
-            Wreck.post = orig;
 
             expect(updates.length).to.equal(2);
             expect(code).to.equal(1);
@@ -430,9 +467,14 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({
+                'content-type': 'application/json',
+                'x-loggly-tag': 'test'
+            });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -441,7 +483,6 @@ describe('Bananas', () => {
         process.exit = (code) => {
 
             process.exit = exit;
-            Wreck.post = orig;
 
             updates = updates.map(JSON.parse);
             expect(updates).to.equal([
@@ -465,6 +506,8 @@ describe('Bananas', () => {
                     tags: ['test', 'bananas', 'stopped']
                 }
             ]);
+            expect(process.listenerCount('SIGTERM')).to.equal(0);
+            expect(process.listenerCount('SIGINT')).to.equal(0);
             done();
         };
 
@@ -486,9 +529,11 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        const orig = Wreck.post;
         Wreck.post = function (uri, options, next) {
 
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
             return next();
         };
@@ -497,7 +542,6 @@ describe('Bananas', () => {
         process.exit = (code) => {
 
             process.exit = exit;
-            Wreck.post = orig;
 
             updates = updates.map(JSON.parse);
             expect(updates).to.equal([
@@ -521,6 +565,8 @@ describe('Bananas', () => {
                     tags: ['bananas', 'stopped']
                 }
             ]);
+            expect(process.listenerCount('SIGTERM')).to.equal(0);
+            expect(process.listenerCount('SIGINT')).to.equal(0);
             done();
         };
 
