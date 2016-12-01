@@ -638,4 +638,64 @@ describe('Bananas', () => {
             process.emit('SIGINT');
         });
     });
+
+    it('records request authentication', { parallel: false }, (done, onCleanup) => {
+
+        onCleanup(restorePost);
+
+        const server = new Hapi.Server({ debug: false });
+        server.connection();
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            exclude: ['/b'],
+            credentials: function (request) {
+
+                return { user: request.auth.credentials.user };
+            }
+        };
+
+        let updates = [];
+        Wreck.post = function (uri, options, next) {
+
+            updates = updates.concat(options.payload.split('\n'));
+            return next();
+        };
+
+        server.register({ register: Bananas, options: settings }, (err) => {
+
+            expect(err).to.not.exist();
+
+            server.route({
+                path: '/a',
+                method: 'GET',
+                handler: function (request, reply) {
+
+                    request.auth.credentials = { user: 'steve' };
+                    return reply('hello');
+                }
+            });
+
+            server.start((err) => {
+
+                expect(err).to.not.exist();
+
+                server.inject('/a', (res1) => {
+
+                    setTimeout(() => {
+
+                        expect(updates.length).to.equal(2);
+                        expect(JSON.parse(updates[1]).auth).to.equal({ user: 'steve' });
+
+                        server.stop((err) => {
+
+                            expect(err).to.not.exist();
+                            done();
+                        });
+                    }, 200);
+                });
+            });
+        });
+    });
 });
