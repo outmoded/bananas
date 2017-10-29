@@ -3,10 +3,13 @@
 // Load modules
 
 const Os = require('os');
+
 const Bananas = require('../');
 const Code = require('code');
 const Hapi = require('hapi');
+const Hoek = require('hoek');
 const Lab = require('lab');
+const Teamwork = require('teamwork');
 const Wreck = require('wreck');
 
 
@@ -17,27 +20,23 @@ const internals = {};
 
 // Test shortcuts
 
-const lab = exports.lab = Lab.script();
-const describe = lab.describe;
-const it = lab.it;
+const { describe, it } = exports.lab = Lab.script();
 const expect = Code.expect;
 
 
 describe('Bananas', () => {
 
     const originalPost = Wreck.post;
-    const restorePost = (done) => {
+    const restorePost = () => {
 
         Wreck.post = originalPost;
-        done();
     };
 
-    it('logs error events', { parallel: false }, (done, onCleanup) => {
+    it('logs error events', async (flags) => {
 
-        onCleanup(restorePost);
+        flags.onCleanup = restorePost;
 
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
+        const server = Hapi.server({ debug: false });
 
         const settings = {
             token: 'abcdefg',
@@ -46,7 +45,7 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        Wreck.post = function (uri, options, next) {
+        Wreck.post = function (uri, options) {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
             expect(options.json).to.be.true();
@@ -54,150 +53,149 @@ describe('Bananas', () => {
                 'content-type': 'application/json',
                 'x-loggly-tag': 'test,test2'
             });
+
             updates = updates.concat(options.payload.split('\n'));
-            return next();
         };
 
         const timeBeforeBananasRegister = new Date();
-        server.register({ register: Bananas, options: settings }, (err) => {
+        await server.register({ plugin: Bananas, options: settings });
 
-            expect(err).to.not.exist();
+        server.route({
+            path: '/{param1}/b/{param2}',
+            method: 'GET',
+            handler: function (request) {
 
-            server.route({
-                path: '/{param1}/b/{param2}',
-                method: 'GET',
-                handler: function (request, reply) {
-
-                    request.server.log('server event');
-                    throw new Error('boom');
-                }
-            });
-
-            const timeBeforeServerStart = new Date();
-            server.start((err) => {
-
-                expect(err).to.not.exist();
-                const timeBeforeInject = new Date();
-
-                server.inject('/123/b/456', (res) => {
-
-                    const error = new Error('oops');
-                    error.data = 42;
-                    server.log(['some', 'tags'], error);
-
-                    setTimeout(() => {
-
-                        updates = updates.map(JSON.parse);
-                        expect(updates).to.equal([
-                            {
-                                event: 'server',
-                                timestamp: updates[0].timestamp,
-                                host: Os.hostname(),
-                                tags: ['test', 'test2', 'bananas', 'initialized'],
-                                env: JSON.parse(JSON.stringify(process.env))
-                            },
-                            {
-                                event: 'server',
-                                timestamp: updates[1].timestamp,
-                                host: Os.hostname(),
-                                tags: ['test', 'test2', 'server event']
-                            },
-                            {
-                                event: 'server',
-                                timestamp: updates[2].timestamp,
-                                host: Os.hostname(),
-                                tags: ['test', 'test2', 'some', 'tags'],
-                                data: {
-                                    message: 'oops',
-                                    stack: updates[2].data.stack,
-                                    data: 42
-                                }
-                            },
-                            {
-                                event: 'error',
-                                timestamp: updates[3].timestamp,
-                                host: Os.hostname(),
-                                tags: ['test', 'test2'],
-                                path: '/123/b/456',
-                                routePath: '/{param1}/b/{param2}',
-                                params: {
-                                    param1: '123',
-                                    param2: '456'
-                                },
-                                query: {},
-                                method: 'get',
-                                request: {
-                                    id: updates[3].request.id,
-                                    received: updates[3].request.received,
-                                    elapsed: updates[3].request.elapsed
-                                },
-                                error: {
-                                    message: 'Uncaught error: boom',
-                                    stack: updates[3].error.stack
-                                }
-                            },
-                            {
-                                event: 'response',
-                                timestamp: updates[4].timestamp,
-                                host: Os.hostname(),
-                                tags: ['test', 'test2'],
-                                path: '/123/b/456',
-                                routePath: '/{param1}/b/{param2}',
-                                params: {
-                                    param1: '123',
-                                    param2: '456'
-                                },
-                                query: {},
-                                method: 'get',
-                                request: {
-                                    id: updates[4].request.id,
-                                    received: updates[4].request.received,
-                                    elapsed: updates[4].request.elapsed
-                                },
-                                code: 500,
-                                error: {
-                                    statusCode: 500,
-                                    error: 'Internal Server Error',
-                                    message: 'An internal server error occurred'
-                                }
-                            }
-                        ]);
-
-                        expect(new Date(updates[0].timestamp)).to.be.between(timeBeforeBananasRegister, new Date());
-                        expect(new Date(updates[1].timestamp)).to.be.between(timeBeforeServerStart, new Date());
-
-                        updates.slice(2).forEach((update) => {
-
-                            expect(new Date(update.timestamp)).to.be.between(timeBeforeInject, new Date());
-                        });
-
-                        const timeBeforeStop = new Date();
-                        server.stop((err) => {
-
-                            expect(err).to.not.exist();
-                            expect(updates.length).to.equal(6);
-                            const lastUpdate = JSON.parse(updates[5]);
-                            expect(lastUpdate).to.equal({
-                                event: 'server',
-                                timestamp: lastUpdate.timestamp,
-                                host: Os.hostname(),
-                                tags: ['test', 'test2', 'bananas', 'stopped']
-                            });
-                            expect(new Date(lastUpdate.timestamp)).to.be.between(timeBeforeStop, new Date());
-                            done();
-                        });
-                    }, 200);
-                });
-            });
+                request.server.log('server event');
+                throw new Error('boom 1');
+            }
         });
+
+        const timeBeforeServerStart = new Date();
+        await server.start();
+        const timeBeforeInject = new Date();
+
+        await server.inject('/123/b/456');
+
+        const error = new Error('oops 2');
+        error.data = 42;
+        server.log(['some', 'tags'], error);
+        server.log(['data'], { some: 'data' });
+
+        await Hoek.wait(200);
+
+        updates = updates.map(JSON.parse);
+        expect(updates).to.equal([
+            {
+                event: 'server',
+                timestamp: updates[0].timestamp,
+                host: Os.hostname(),
+                tags: ['test', 'test2', 'bananas', 'initialized'],
+                env: JSON.parse(JSON.stringify(process.env))
+            },
+            {
+                event: 'server',
+                timestamp: updates[1].timestamp,
+                host: Os.hostname(),
+                tags: ['test', 'test2', 'server event']
+            },
+            {
+                event: 'error',
+                timestamp: updates[2].timestamp,
+                host: Os.hostname(),
+                tags: ['test', 'test2'],
+                path: '/123/b/456',
+                routePath: '/{param1}/b/{param2}',
+                params: {
+                    param1: '123',
+                    param2: '456'
+                },
+                query: {},
+                method: 'get',
+                request: {
+                    id: updates[2].request.id,
+                    received: updates[2].request.received,
+                    elapsed: updates[2].request.elapsed
+                },
+                error: {
+                    message: 'boom 1',
+                    stack: updates[2].error.stack
+                }
+            },
+            {
+                event: 'response',
+                timestamp: updates[3].timestamp,
+                host: Os.hostname(),
+                tags: ['test', 'test2'],
+                path: '/123/b/456',
+                routePath: '/{param1}/b/{param2}',
+                params: {
+                    param1: '123',
+                    param2: '456'
+                },
+                query: {},
+                method: 'get',
+                request: {
+                    id: updates[3].request.id,
+                    received: updates[3].request.received,
+                    elapsed: updates[3].request.elapsed
+                },
+                code: 500,
+                error: {
+                    statusCode: 500,
+                    error: 'Internal Server Error',
+                    message: 'An internal server error occurred'
+                }
+            },
+            {
+                event: 'server',
+                timestamp: updates[4].timestamp,
+                host: Os.hostname(),
+                tags: ['test', 'test2', 'some', 'tags'],
+                error: {
+                    message: 'oops 2',
+                    stack: updates[4].error.stack,
+                    data: 42
+                }
+            },
+            {
+                event: 'server',
+                timestamp: updates[5].timestamp,
+                host: Os.hostname(),
+                tags: ['test', 'test2', 'data'],
+                data: { some: 'data' }
+            }
+
+        ]);
+
+        expect(new Date(updates[0].timestamp)).to.be.between(timeBeforeBananasRegister, new Date());
+        expect(new Date(updates[1].timestamp)).to.be.between(timeBeforeServerStart, new Date());
+
+        updates.slice(2).forEach((update) => {
+
+            expect(new Date(update.timestamp)).to.be.between(timeBeforeInject, new Date());
+        });
+
+        const timeBeforeStop = Date.now();
+
+        await server.stop();
+
+        expect(updates.length).to.equal(7);
+        const lastUpdate = JSON.parse(updates[6]);
+        expect(lastUpdate).to.equal({
+            event: 'server',
+            timestamp: lastUpdate.timestamp,
+            host: Os.hostname(),
+            tags: ['test', 'test2', 'bananas', 'stopped']
+        });
+
+        expect(lastUpdate.timestamp).to.be.between(timeBeforeStop - 1, Date.now() + 1);
     });
 
-    it('logs valid event', { parallel: false }, (done, onCleanup) => {
+    it('logs valid event', async (flags) => {
 
-        onCleanup(restorePost);
+        flags.onCleanup = restorePost;
 
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
+        const server = Hapi.server({ debug: false });
 
         const settings = {
             token: 'gfedcba',
@@ -205,54 +203,37 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        Wreck.post = function (uri, options, next) {
+        Wreck.post = function (uri, options) {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/gfedcba');
             expect(options.json).to.be.true();
             expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
-            return next();
         };
 
-        server.register({ register: Bananas, options: settings }, (err) => {
+        await server.register({ plugin: Bananas, options: settings });
 
-            expect(err).to.not.exist();
-
-            server.route({
-                path: '/',
-                method: 'GET',
-                handler: function (request, reply) {
-
-                    return reply('hello');
-                }
-            });
-
-            server.start((err) => {
-
-                expect(err).to.not.exist();
-
-                server.inject('/', (res) => {
-
-                    setTimeout(() => {
-
-                        expect(updates.length).to.equal(2);
-
-                        server.stop((err) => {
-
-                            expect(err).to.not.exist();
-                            done();
-                        });
-                    }, 200);
-                });
-            });
+        server.route({
+            path: '/',
+            method: 'GET',
+            handler: () => 'hello'
         });
+
+        await server.start();
+
+        await server.inject('/');
+        await Hoek.wait(200);
+
+        expect(updates.length).to.equal(2);
+
+        await server.stop();
     });
 
-    it('logs valid event on late connection', { parallel: false }, (done, onCleanup) => {
+    it('logs valid event on late connection', async (flags) => {
 
-        onCleanup(restorePost);
+        flags.onCleanup = restorePost;
 
-        const server = new Hapi.Server({ debug: false });
+        const server = Hapi.server({ debug: false });
         const settings = {
             token: 'abcdefg',
             intervalMsec: 50,
@@ -260,56 +241,36 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        Wreck.post = function (uri, options, next) {
+        Wreck.post = function (uri, options) {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
             expect(options.json).to.be.true();
             expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
-            return next();
         };
 
-        server.register({ register: Bananas, options: settings }, (err) => {
+        await server.register({ plugin: Bananas, options: settings });
 
-            expect(err).to.not.exist();
-
-            server.connection();
-            server.route({
-                path: '/',
-                method: 'GET',
-                handler: function (request, reply) {
-
-                    return reply('hello');
-                }
-            });
-
-            server.start((err) => {
-
-                expect(err).to.not.exist();
-
-                server.inject('/', (res) => {
-
-                    setTimeout(() => {
-
-                        expect(updates.length).to.equal(2);
-
-                        server.stop((err) => {
-
-                            expect(err).to.not.exist();
-                            done();
-                        });
-                    }, 200);
-                });
-            });
+        server.route({
+            path: '/',
+            method: 'GET',
+            handler: () => 'hello'
         });
+
+        await server.start();
+
+        await server.inject('/');
+        await Hoek.wait(200);
+        expect(updates.length).to.equal(2);
+
+        await server.stop();
     });
 
-    it('logs valid event', { parallel: false }, (done, onCleanup) => {
+    it('logs valid event', async (flags) => {
 
-        onCleanup(restorePost);
+        flags.onCleanup = restorePost;
 
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
+        const server = Hapi.server({ debug: false });
 
         const settings = {
             token: 'abcdefg',
@@ -318,67 +279,44 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        Wreck.post = function (uri, options, next) {
+        Wreck.post = function (uri, options) {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
             expect(options.json).to.be.true();
             expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
-            return next();
         };
 
-        server.register({ register: Bananas, options: settings }, (err) => {
+        await server.register({ plugin: Bananas, options: settings });
 
-            expect(err).to.not.exist();
-
-            server.route({
-                path: '/a',
-                method: 'GET',
-                handler: function (request, reply) {
-
-                    return reply('hello');
-                }
-            });
-
-            server.route({
-                path: '/b',
-                method: 'GET',
-                handler: function (request, reply) {
-
-                    return reply('hello');
-                }
-            });
-
-            server.start((err) => {
-
-                expect(err).to.not.exist();
-
-                server.inject('/a', (res1) => {
-
-                    server.inject('/b', (res2) => {
-
-                        setTimeout(() => {
-
-                            expect(updates.length).to.equal(2);
-
-                            server.stop((err) => {
-
-                                expect(err).to.not.exist();
-                                done();
-                            });
-                        }, 200);
-                    });
-                });
-            });
+        server.route({
+            path: '/a',
+            method: 'GET',
+            handler: () => 'hello'
         });
+
+        server.route({
+            path: '/b',
+            method: 'GET',
+            handler: () => 'hello'
+        });
+
+        await server.start();
+
+        await server.inject('/a');
+        await server.inject('/b');
+
+        await Hoek.wait(200);
+
+        expect(updates.length).to.equal(2);
+        await server.stop();
     });
 
-    it('filter routes with flag', { parallel: false }, (done, onCleanup) => {
+    it('filter routes with flags', async (flags) => {
 
-        onCleanup(restorePost);
+        flags.onCleanup = restorePost;
 
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
+        const server = Hapi.server({ debug: false });
 
         const settings = {
             token: 'abcdefg',
@@ -387,138 +325,43 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        Wreck.post = function (uri, options, next) {
+        Wreck.post = function (uri, options) {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
             expect(options.json).to.be.true();
             expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
-            return next();
         };
 
-        server.register({ register: Bananas, options: settings }, (err) => {
+        await server.register({ plugin: Bananas, options: settings });
 
-            expect(err).to.not.exist();
-
-            server.route({
-                path: '/a',
-                method: 'GET',
-                handler: function (request, reply) {
-
-                    return reply('hello');
-                },
-                config: {
-                    plugins: {
-                        bananas: {
-                            exclude: true
-                        }
+        server.route({
+            path: '/a',
+            method: 'GET',
+            handler: () => 'hello',
+            config: {
+                plugins: {
+                    bananas: {
+                        exclude: true
                     }
                 }
-            });
-
-            server.start((err) => {
-
-                expect(err).to.not.exist();
-
-                server.inject('/a', (res1) => {
-
-                    setTimeout(() => {
-
-                        expect(updates.length).to.equal(1);
-
-                        server.stop((err) => {
-
-                            expect(err).to.not.exist();
-                            done();
-                        });
-                    }, 200);
-                });
-            });
+            }
         });
+
+        await server.start();
+
+        await server.inject('/a');
+        await Hoek.wait(200);
+        expect(updates.length).to.equal(1);
+
+        await server.stop();
     });
 
-    it('logs uncaughtException event', { parallel: false }, (done, onCleanup) => {
+    it('logs signal (SIGTERM)', async (flags) => {
 
-        onCleanup(restorePost);
+        flags.onCleanup = restorePost;
 
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
-
-        const settings = {
-            token: 'abcdefg',
-            intervalMsec: 50,
-            uncaughtException: true
-        };
-
-        let updates = [];
-        Wreck.post = function (uri, options, next) {
-
-            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
-            expect(options.json).to.be.true();
-            expect(options.headers).to.equal({ 'content-type': 'application/json' });
-            updates = updates.concat(options.payload.split('\n'));
-            return next();
-        };
-
-        const exit = process.exit;
-        process.exit = (code) => {
-
-            process.exit = exit;
-
-            expect(updates.length).to.equal(2);
-            expect(code).to.equal(1);
-            done();
-        };
-
-        server.register({ register: Bananas, options: settings }, (err) => {
-
-            expect(err).to.not.exist();
-            process.emit('uncaughtException', new Error('boom'));
-        });
-    });
-
-    it('logs unhandledRejection event', { parallel: false }, (done, onCleanup) => {
-
-        onCleanup(restorePost);
-
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
-
-        const settings = {
-            token: 'abcdefg',
-            intervalMsec: 50,
-            uncaughtException: true
-        };
-
-        let updates = [];
-        Wreck.post = function (uri, options, next) {
-
-            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
-            expect(options.json).to.be.true();
-            expect(options.headers).to.equal({ 'content-type': 'application/json' });
-            updates = updates.concat(options.payload.split('\n'));
-            return next();
-        };
-
-        server.register({ register: Bananas, options: settings }, (err) => {
-
-            expect(err).to.not.exist();
-            Promise.reject(new Error('Boom'));
-
-            setTimeout(() => {
-
-                expect(updates[1]).to.contain('"tags":["bananas","uncaught","promise","error"]');
-                done();
-            }, 100);
-        });
-    });
-
-    it('logs signal (SIGTERM)', { parallel: false }, (done, onCleanup) => {
-
-        onCleanup(restorePost);
-
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
+        const server = Hapi.server({ debug: false });
 
         const settings = {
             token: 'abcdefg',
@@ -527,7 +370,7 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        Wreck.post = function (uri, options, next) {
+        Wreck.post = function (uri, options) {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
             expect(options.json).to.be.true();
@@ -536,9 +379,9 @@ describe('Bananas', () => {
                 'x-loggly-tag': 'test'
             });
             updates = updates.concat(options.payload.split('\n'));
-            return next();
         };
 
+        const team = new Teamwork();
         const exit = process.exit;
         process.exit = (code) => {
 
@@ -568,22 +411,19 @@ describe('Bananas', () => {
             ]);
             expect(process.listenerCount('SIGTERM')).to.equal(0);
             expect(process.listenerCount('SIGINT')).to.equal(0);
-            done();
+            team.attend();
         };
 
-        server.register({ register: Bananas, options: settings }, (err) => {
-
-            expect(err).to.not.exist();
-            process.emit('SIGTERM');
-        });
+        await server.register({ plugin: Bananas, options: settings });
+        process.emit('SIGTERM');
+        await team.work;
     });
 
-    it('logs signal (SIGINT)', { parallel: false }, (done, onCleanup) => {
+    it('logs signal (SIGINT)', async (flags) => {
 
-        onCleanup(restorePost);
+        flags.onCleanup = restorePost;
 
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
+        const server = Hapi.server({ debug: false });
 
         const settings = {
             token: 'abcdefg',
@@ -591,15 +431,15 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        Wreck.post = function (uri, options, next) {
+        Wreck.post = function (uri, options) {
 
             expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
             expect(options.json).to.be.true();
             expect(options.headers).to.equal({ 'content-type': 'application/json' });
             updates = updates.concat(options.payload.split('\n'));
-            return next();
         };
 
+        const team = new Teamwork();
         const exit = process.exit;
         process.exit = (code) => {
 
@@ -629,22 +469,19 @@ describe('Bananas', () => {
             ]);
             expect(process.listenerCount('SIGTERM')).to.equal(0);
             expect(process.listenerCount('SIGINT')).to.equal(0);
-            done();
+            team.attend();
         };
 
-        server.register({ register: Bananas, options: settings }, (err) => {
-
-            expect(err).to.not.exist();
-            process.emit('SIGINT');
-        });
+        await server.register({ plugin: Bananas, options: settings });
+        process.emit('SIGINT');
+        await team.work;
     });
 
-    it('records request authentication', { parallel: false }, (done, onCleanup) => {
+    it('records request authentication', async (flags) => {
 
-        onCleanup(restorePost);
+        flags.onCleanup = restorePost;
 
-        const server = new Hapi.Server({ debug: false });
-        server.connection();
+        const server = Hapi.server({ debug: false });
 
         const settings = {
             token: 'abcdefg',
@@ -657,45 +494,116 @@ describe('Bananas', () => {
         };
 
         let updates = [];
-        Wreck.post = function (uri, options, next) {
+        Wreck.post = function (uri, options) {
 
             updates = updates.concat(options.payload.split('\n'));
-            return next();
         };
 
-        server.register({ register: Bananas, options: settings }, (err) => {
+        await server.register({ plugin: Bananas, options: settings });
 
-            expect(err).to.not.exist();
+        server.route({
+            path: '/a',
+            method: 'GET',
+            handler: function (request) {
 
-            server.route({
-                path: '/a',
-                method: 'GET',
-                handler: function (request, reply) {
-
-                    request.auth.credentials = { user: 'steve' };
-                    return reply('hello');
-                }
-            });
-
-            server.start((err) => {
-
-                expect(err).to.not.exist();
-
-                server.inject('/a', (res1) => {
-
-                    setTimeout(() => {
-
-                        expect(updates.length).to.equal(2);
-                        expect(JSON.parse(updates[1]).auth).to.equal({ user: 'steve' });
-
-                        server.stop((err) => {
-
-                            expect(err).to.not.exist();
-                            done();
-                        });
-                    }, 200);
-                });
-            });
+                request.auth.credentials = { user: 'steve' };
+                return 'hello';
+            }
         });
+
+        await server.start();
+
+        await server.inject('/a');
+        await Hoek.wait(200);
+
+        expect(updates.length).to.equal(2);
+        expect(JSON.parse(updates[1]).auth).to.equal({ user: 'steve' });
+
+        await server.stop();
+    });
+
+    it('logs uncaughtException event', async (flags) => {
+
+        flags.onCleanup = restorePost;
+
+        process.removeAllListeners('uncaughtException');
+
+        const server = Hapi.server({ debug: false });
+        await server.start();
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            uncaughtException: true
+        };
+
+        let updates = [];
+        Wreck.post = function (uri, options) {
+
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
+            updates = updates.concat(options.payload.split('\n'));
+        };
+
+        const team = new Teamwork();
+        const exit = process.exit;
+        process.exit = (code) => {
+
+            process.exit = exit;
+
+            expect(updates.length).to.equal(2);
+            expect(code).to.equal(1);
+            team.attend();
+        };
+
+        await server.register({ plugin: Bananas, options: settings });
+        process.emit('uncaughtException', new Error('boom'));
+        await team.work;
+        await server.stop();
+    });
+
+    it('logs unhandledRejection event', async (flags) => {
+
+        flags.onCleanup = restorePost;
+
+        process.removeAllListeners('unhandledRejection');
+
+        const server = Hapi.server({ debug: false });
+
+        const settings = {
+            token: 'abcdefg',
+            intervalMsec: 50,
+            uncaughtException: true
+        };
+
+        let updates = [];
+        Wreck.post = function (uri, options) {
+
+            expect(uri).to.equal('https://logs-01.loggly.com/bulk/abcdefg');
+            expect(options.json).to.be.true();
+            expect(options.headers).to.equal({ 'content-type': 'application/json' });
+            updates = updates.concat(options.payload.split('\n'));
+        };
+
+        const team = new Teamwork();
+        const exit = process.exit;
+        process.exit = (code) => {
+
+            process.exit = exit;
+
+            expect(updates.length).to.equal(2);
+            expect(code).to.equal(1);
+            team.attend();
+        };
+
+        await server.register({ plugin: Bananas, options: settings });
+
+        Promise.reject(new Error('Boom'));
+
+        await Hoek.wait(100);
+
+        expect(updates[1]).to.contain('"tags":["bananas","uncaught","error"]');
+        await team.work;
     });
 });
